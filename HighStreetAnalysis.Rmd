@@ -1,0 +1,35 @@
+---
+title: "HighStreetAnalysis"
+author: "Adam Dennett"
+date: "2023-08-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(geojsonio)
+library(geojsonsf)
+library(readxl)
+library(janitor)
+
+```
+
+
+```{r cars}
+#from ONS Geoportal - https://geoportal.statistics.gov.uk/datasets/ons::local-authority-districts-april-2023-names-and-codes-in-the-united-kingdom/explore 
+lad_codes <- read_csv("Local_Authority_Districts_(April_2023)_Names_and_Codes_in_the_United_Kingdom.csv")
+
+#from openLocal
+camden <- read_csv("2022-10-08-E09000007-local.csv")
+
+#from VOA - https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/450034/Data_Info_and_Methodology.pdf - excel file link p3
+SCat_LUT <- read_excel("Special_category__primary_description__property_types_and_sector_mappings.xls", col_types = c("text","text","text","text","text","text","text","text","text","text")) %>% clean_names()
+```
+
+## Including Plots
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
