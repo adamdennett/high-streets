@@ -56,11 +56,12 @@ dbListTables(con)
 
 # Database connection parameters
 db_params <- list(
-  dbname = "gisdb",
+  dbname = "openlocal",
   host = "localhost",
   port = "5433",  # Change to your PostgreSQL port if necessary
   user = "postgres",
-  password = "postgres"
+  password = "postgres",
+  schema = "public"
 )
 
 # Folder containing the CSV files
@@ -69,33 +70,27 @@ csv_folder <- "C:/Users/Adam/OneDrive - University College London/Research/OpenL
 # Establish a database connection
 conn <- dbConnect(RPostgres::Postgres(), dbname = db_params$dbname,
                   host = db_params$host, port = db_params$port,
-                  user = db_params$user, password = db_params$password)
+                  user = db_params$user, password = db_params$password, 
+                  schema = db_params$public)
 
 # List all CSV files in the folder
 csv_files <- list.files(path = csv_folder, pattern = "\\.csv$", full.names = TRUE)
 
 # Begin a single transaction for all CSV files
-dbBegin(conn)
+#dbBegin(conn)
 
 for (csv_file in csv_files) {
   original_table_name <- tools::file_path_sans_ext(basename(csv_file))
 
   # Modify the table name to make it PostgreSQL compliant
-  table_name <- paste0("csv_data_", gsub("[^A-Za-z0-9_]", "_", original_table_name))
+  table_name <- paste0(gsub("[^A-Za-z0-9_]", "_", original_table_name))
 
   tryCatch({
     # Read CSV file into a data frame
-    csv_data <- read_csv(csv_file, col_names = TRUE)
+    #csv_data <- read_csv(csv_file, col_names = TRUE)
+    temp_data <- read_csv(csv_file)
 
-    # Create the table in PostgreSQL with the same structure as the data frame
-    sql_create_table <- paste(
-      "CREATE TEMP TABLE", dbQuoteIdentifier(conn, table_name),
-      "AS SELECT * FROM", dbQuoteIdentifier(conn, "pg_catalog.pg_tables"), "LIMIT 0;"
-    )
-    dbExecute(conn, sql_create_table)
-
-    # Insert data into the PostgreSQL table
-    dbWriteTable(conn, name = table_name, value = csv_data, append = TRUE)
+    dbWriteTable(conn, name=table_name, value=temp_data, header = TRUE, sep = ',', overwrite = TRUE)
 
   }, error = function(e) {
     cat(paste("Error processing file", csv_file, ":", conditionMessage(e), "\n"))
@@ -109,18 +104,36 @@ dbDisconnect(conn)
 
 ```{r}
 
-# Define the SQL statement to create a temporary table
-  create_table_sql <- paste(
-    "CREATE TEMP TABLE", dbQuoteIdentifier(conn, "2022_10_08_E06000002_local"), "AS",
-    "SELECT * FROM (",
-    "   SELECT * FROM", dbQuoteIdentifier(conn, "2022_10_08_E06000002_local"),
-    "   LIMIT 0",
-    ") AS", dbQuoteIdentifier(conn, "2022_10_08_E06000002_local")
-  )
+# Database connection parameters
+db_params <- list(
+  dbname = "openlocal",
+  host = "localhost",
+  port = "5433",  # Change to your PostgreSQL port if necessary
+  user = "postgres",
+  password = "postgres",
+  schema = "public"
+)
 
+# Folder containing the CSV files
+csv_folder <- "C:/Users/Adam/OneDrive - University College London/Research/OpenLocal/openLocal-Q3-2022-local-history/app/workings/REPORT"
+
+# Establish a database connection
+conn <- dbConnect(RPostgres::Postgres(), dbname = db_params$dbname,
+                  host = db_params$host, port = db_params$port,
+                  user = db_params$user, password = db_params$password, schema = db_params$public)
+dbListTables(conn)
+#dbBegin(conn)
+csv_file = csv_files[1]
+original_table_name <- tools::file_path_sans_ext(basename(csv_file))
+
+  # Modify the table name to make it PostgreSQL compliant
+table_name <- paste0(gsub("[^A-Za-z0-9_]", "_", original_table_name))
+
+# Read CSV file into a data frame
+#csv_data <- read_csv(csv_file, col_names = TRUE)
 temp_data <- read_csv(csv_file)
 
-dbWriteTable(conn, name=table_name, value=temp_data, header = TRUE, sep = ',')
+dbWriteTable(conn, name=table_name, value=temp_data, header = TRUE)
 
-dbExecute(conn, create_table_sql) 
+#dbDisconnect(conn)
 ```
