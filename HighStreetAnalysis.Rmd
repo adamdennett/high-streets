@@ -24,14 +24,14 @@ library(data.table)
 
 ```{r cars}
 #from ONS Geoportal - https://geoportal.statistics.gov.uk/datasets/ons::local-authority-districts-april-2023-names-and-codes-in-the-united-kingdom/explore 
-lad_codes <- read_csv("Local_Authority_Districts_(April_2023)_Names_and_Codes_in_the_United_Kingdom.csv")
+lad_codes <- read_csv("../data/Local_Authority_Districts_(April_2023)_Names_and_Codes_in_the_United_Kingdom.csv")
 
 #from openLocal
-camden <- read_csv("2022-10-08-E09000007-local.csv")
+camden <- read_csv("../data/2022-10-08-E09000007-local.csv")
 
 #from VOA - https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/450034/Data_Info_and_Methodology.pdf - excel file link p3
 
-SCat_LUT <- read_excel("./data/Special_category__primary_description__property_types_and_sector_mappings.xls", col_types = c("text","text","text","text","text","text","text","text","text","text")) %>% clean_names()
+SCat_LUT <- read_excel("../data/Special_category__primary_description__property_types_and_sector_mappings.xls", col_types = c("text","text","text","text","text","text","text","text","text","text")) %>% clean_names()
 
 ```
 
