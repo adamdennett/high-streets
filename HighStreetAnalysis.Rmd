@@ -11,7 +11,14 @@ library(geojsonio)
 library(geojsonsf)
 library(readxl)
 library(janitor)
-
+library(sp)
+library(RPostgreSQL)
+library(RPostgres)
+library(rpostgis)
+library(DBI)
+library(sf)
+library(here)
+library(data.table)
 ```
 
 
@@ -23,13 +30,97 @@ lad_codes <- read_csv("Local_Authority_Districts_(April_2023)_Names_and_Codes_in
 camden <- read_csv("2022-10-08-E09000007-local.csv")
 
 #from VOA - https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/450034/Data_Info_and_Methodology.pdf - excel file link p3
-SCat_LUT <- read_excel("Special_category__primary_description__property_types_and_sector_mappings.xls", col_types = c("text","text","text","text","text","text","text","text","text","text")) %>% clean_names()
+
+SCat_LUT <- read_excel("./data/Special_category__primary_description__property_types_and_sector_mappings.xls", col_types = c("text","text","text","text","text","text","text","text","text","text")) %>% clean_names()
+
 ```
 
 ## Including Plots
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+db <- "gisdb"  #provide the name of your db
+host_db <- "localhost" #i.e. # i.e. 'ec2-54-83-201-96.compute-1.amazonaws.com'
+db_port <- "5433"  # or any other port specified by the DBA
+db_user <- "postgres"  
+db_password <- "postgres"
+
+con <- dbConnect(RPostgres::Postgres(), dbname = db, host=host_db, port=db_port, user=db_user, password=db_password) 
+
+#check connection
+dbListTables(con)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+# Install and load the RPostgreSQL package
+
+# Database connection parameters
+db_params <- list(
+  dbname = "gisdb",
+  host = "localhost",
+  port = "5433",  # Change to your PostgreSQL port if necessary
+  user = "postgres",
+  password = "postgres"
+)
+
+# Folder containing the CSV files
+csv_folder <- "C:/Users/Adam/OneDrive - University College London/Research/OpenLocal/openLocal-Q3-2022-local-history/app/workings/REPORT"
+
+# Establish a database connection
+conn <- dbConnect(RPostgres::Postgres(), dbname = db_params$dbname,
+                  host = db_params$host, port = db_params$port,
+                  user = db_params$user, password = db_params$password)
+
+# List all CSV files in the folder
+csv_files <- list.files(path = csv_folder, pattern = "\\.csv$", full.names = TRUE)
+
+# Begin a single transaction for all CSV files
+dbBegin(conn)
+
+for (csv_file in csv_files) {
+  original_table_name <- tools::file_path_sans_ext(basename(csv_file))
+
+  # Modify the table name to make it PostgreSQL compliant
+  table_name <- paste0("csv_data_", gsub("[^A-Za-z0-9_]", "_", original_table_name))
+
+  tryCatch({
+    # Read CSV file into a data frame
+    csv_data <- read_csv(csv_file, col_names = TRUE)
+
+    # Create the table in PostgreSQL with the same structure as the data frame
+    sql_create_table <- paste(
+      "CREATE TEMP TABLE", dbQuoteIdentifier(conn, table_name),
+      "AS SELECT * FROM", dbQuoteIdentifier(conn, "pg_catalog.pg_tables"), "LIMIT 0;"
+    )
+    dbExecute(conn, sql_create_table)
+
+    # Insert data into the PostgreSQL table
+    dbWriteTable(conn, name = table_name, value = csv_data, append = TRUE)
+
+  }, error = function(e) {
+    cat(paste("Error processing file", csv_file, ":", conditionMessage(e), "\n"))
+  })
+}
+
+# Close the database connection
+dbDisconnect(conn)
+
+```
+
+```{r}
+
+# Define the SQL statement to create a temporary table
+  create_table_sql <- paste(
+    "CREATE TEMP TABLE", dbQuoteIdentifier(conn, "2022_10_08_E06000002_local"), "AS",
+    "SELECT * FROM (",
+    "   SELECT * FROM", dbQuoteIdentifier(conn, "2022_10_08_E06000002_local"),
+    "   LIMIT 0",
+    ") AS", dbQuoteIdentifier(conn, "2022_10_08_E06000002_local")
+  )
+
+temp_data <- read_csv(csv_file)
+
+dbWriteTable(conn, name=table_name, value=temp_data, header = TRUE, sep = ',')
+
+dbExecute(conn, create_table_sql) 
+```
